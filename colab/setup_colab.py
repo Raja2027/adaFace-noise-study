@@ -26,13 +26,11 @@ def main():
     except ImportError:
         print("PyTorch not installed yet. Will install via requirements.")
 
-    # 2. Mount Google Drive (if in Colab)
-    try:
-        from google.colab import drive
-        drive.mount('/content/drive', force_remount=True)
-        print("Google Drive mounted at /content/drive")
-    except ImportError:
-        print("Not running in Google Colab environment or google.colab is not available.")
+    # 2. Verify Google Drive is already mounted (mounted by notebook cell)
+    if os.path.exists('/content/drive/MyDrive'):
+        print("Google Drive is mounted at /content/drive")
+    else:
+        print("WARNING: Google Drive not mounted. Mount it from a notebook cell first.")
     
     # 3. Define Paths
     DRIVE_ROOT = Path('/content/drive/MyDrive/adaFace-noise-study')
