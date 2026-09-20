@@ -92,22 +92,23 @@ def run_preflight():
         results['Label-map integrity'] = 'FAIL'
         results['RecordDataset random access'] = 'FAIL'
 
-    # 6. Multiprocessing
+    # 6. Multiprocessing / DataLoader check
     try:
-        loader = DataLoader(dataset, batch_size=4, num_workers=2)
+        # Colab has limited /dev/shm; num_workers>0 can hang or segfault
+        try:
+            import google.colab  # noqa
+            test_workers = 0
+        except ImportError:
+            test_workers = 2
+        loader = DataLoader(dataset, batch_size=4, num_workers=test_workers)
         for i, batch in enumerate(loader):
             if i >= 2: break
+        if test_workers == 0:
+            print("Note: Colab detected, verified DataLoader with num_workers=0")
         results['Multiprocessing'] = 'PASS'
-    except Exception:
-        # Colab shared-memory can block num_workers>0; verify num_workers=0 works
-        try:
-            loader = DataLoader(dataset, batch_size=4, num_workers=0)
-            for i, batch in enumerate(loader):
-                if i >= 2: break
-            print("Note: num_workers=2 failed (Colab shm limit); num_workers=0 works fine.")
-            results['Multiprocessing'] = 'PASS'
-        except Exception:
-            results['Multiprocessing'] = 'FAIL'
+    except Exception as e:
+        print(f"DataLoader check failed: {e}")
+        results['Multiprocessing'] = 'FAIL'
 
     # 7. AdaFace Parameters
     try:
