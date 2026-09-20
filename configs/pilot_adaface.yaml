@@ -1,0 +1,24 @@
+data:
+  train_csv: "data/splits/pilot_balanced/train.csv"
+  val_csv: "data/splits/pilot_balanced/val.csv"
+  data_root: "data/splits/pilot_100id"
+
+model:
+  backbone: "ir_50"
+  embedding_size: 512
+  classnum: 83
+  adaface_m: 0.4
+  adaface_h: 0.333
+  adaface_s: 64.0
+  adaface_t_alpha: 0.01
+
+training:
+  seed: 42
+  batch_size: 32
+  learning_rate: 0.01
+  momentum: 0.9
+  weight_decay: 5e-4
+  epochs: 40
+  lr_milestones: [20, 30, 35]
+  lr_gamma: 0.1
+  num_workers: 0

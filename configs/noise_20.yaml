@@ -1,0 +1,29 @@
+data:
+  idx_path: data/raw/faces_webface_112x112/train.idx
+  label_map_path: data/metadata/record_label_map.csv
+  rec_path: data/raw/faces_webface_112x112/train.rec
+experiment:
+  name: full_webface_noise_20
+  noise_percentage: 20
+model:
+  adaface_h: 0.333
+  adaface_m: 0.4
+  adaface_s: 64.0
+  adaface_t_alpha: 0.01
+  backbone: ir_50
+  classnum: 10572
+  embedding_size: 512
+training:
+  batch_size: 256
+  checkpoint_freq: 5
+  epochs: 26
+  learning_rate: 0.1
+  lr_gamma: 0.1
+  lr_milestones:
+  - 12
+  - 20
+  - 24
+  momentum: 0.9
+  num_workers: 4
+  seed: 42
+  weight_decay: 5e-4

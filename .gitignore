@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Checkpoints and models (Large Binaries -> Google Drive)
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# Data (Large Binaries -> Google Drive)
+*.rec
+*.idx
+data/raw/faces_webface_112x112/
+data/splits/pilot_100id/images/
+data/corrupted/*/images/
+*.zip
+*.tar
+*.gz
+
+# IDEs
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Logs (Heavy logs to Drive, lightweight to git)
+logs/
+results/*/run_*/train_log.json
