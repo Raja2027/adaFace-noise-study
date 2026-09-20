@@ -145,7 +145,8 @@ def main():
         'checkpoint_freq': config['training']['checkpoint_freq'],
         'sync_dir': str(sync_dir),
         'git_commit': git_hash,
-        'gpu_model': torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'None'
+        'gpu_model': torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'None',
+        'ADAFACE_UPSTREAM_COMMIT': os.popen('git -C third_party/AdaFace rev-parse HEAD').read().strip()
     }
     
     print("="*50)

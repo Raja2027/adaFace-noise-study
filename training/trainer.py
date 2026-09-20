@@ -19,20 +19,24 @@ class Trainer:
         total = 0
         
         pbar = tqdm(dataloader, desc=f"Epoch {epoch} Train")
-        for batch_idx, (images, labels, _) in enumerate(pbar):
+        for batch_idx, (images, true_labels, ids, assigned_labels) in enumerate(pbar):
             images = images.to(self.device)
-            labels = labels.to(self.device)
+            assigned_labels = assigned_labels.to(self.device)
             
             # Forward pass through backbone
             # Backbone returns (normalized_embeddings, norms)
             embeddings, norms = self.backbone(images)
             
             # Forward pass through AdaFace head
-            # Head returns scaled logits
-            logits = self.head(embeddings, norms, labels)
-            
+            # Head returns scaled logits and margin_scaler (which we ignore here)
+            head_out = self.head(embeddings, norms, assigned_labels)
+            if isinstance(head_out, tuple):
+                logits = head_out[0]
+            else:
+                logits = head_out
+                
             # Compute loss
-            loss = self.criterion(logits, labels)
+            loss = self.criterion(logits, assigned_labels)
             
             # Backward and optimize
             self.optimizer.zero_grad()
@@ -42,7 +46,7 @@ class Trainer:
             # Metrics
             total_loss += loss.item() * images.size(0)
             preds = logits.argmax(dim=1)
-            correct += (preds == labels).sum().item()
+            correct += (preds == assigned_labels).sum().item()
             total += images.size(0)
             
             if batch_idx % log_interval == 0:
@@ -60,18 +64,22 @@ class Trainer:
         
         with torch.no_grad():
             pbar = tqdm(dataloader, desc=f"Epoch {epoch} Val")
-            for images, labels, _ in pbar:
+            for images, true_labels, ids, assigned_labels in pbar:
                 images = images.to(self.device)
-                labels = labels.to(self.device)
+                assigned_labels = assigned_labels.to(self.device)
                 
                 embeddings, norms = self.backbone(images)
-                logits = self.head(embeddings, norms, labels)
+                head_out = self.head(embeddings, norms, assigned_labels)
+                if isinstance(head_out, tuple):
+                    logits = head_out[0]
+                else:
+                    logits = head_out
                 
-                loss = self.criterion(logits, labels)
+                loss = self.criterion(logits, assigned_labels)
                 
                 total_loss += loss.item() * images.size(0)
                 preds = logits.argmax(dim=1)
-                correct += (preds == labels).sum().item()
+                correct += (preds == assigned_labels).sum().item()
                 total += images.size(0)
                 
                 pbar.set_postfix({'Loss': loss.item(), 'Acc': correct/total})

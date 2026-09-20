@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
-PROJECT_ROOT = Path(r"C:\Users\Dell\Downloads\research\adaFace-noise-study")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from training.record_dataset import RecordDataset

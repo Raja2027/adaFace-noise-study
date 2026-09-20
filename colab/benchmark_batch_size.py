@@ -72,7 +72,11 @@ def main():
                 
                 optimizer.zero_grad()
                 embeddings, norms = backbone(images)
-                loss, _, _ = head(embeddings, norms, assigned_labels)
+                head_out = head(embeddings, norms, assigned_labels)
+                if isinstance(head_out, tuple):
+                    loss = head_out[0]
+                else:
+                    loss = head_out
                 loss.mean().backward()
                 optimizer.step()
                 
