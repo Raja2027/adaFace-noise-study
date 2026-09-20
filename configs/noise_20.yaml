@@ -14,7 +14,7 @@ model:
   classnum: 10572
   embedding_size: 512
 training:
-  batch_size: 256
+  batch_size: 128  # T4 GPU (15GB VRAM)
   checkpoint_freq: 5
   epochs: 26
   learning_rate: 0.1

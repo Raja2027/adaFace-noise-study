@@ -18,7 +18,7 @@ model:
 
 training:
   seed: 42
-  batch_size: 256  # Physical batch size on Colab GPU. Tune with benchmarking.
+  batch_size: 128  # T4 GPU (15GB VRAM) — 256 causes OOM with IR-50 + AdaFace(10572)
   learning_rate: 0.1
   momentum: 0.9
   weight_decay: 5e-4
