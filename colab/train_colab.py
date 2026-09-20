@@ -76,12 +76,21 @@ def main():
     
     dataset = RecordDataset(rec_path, idx_path, label_map_path, noise_map=noise_map_dict)
     
+    # Colab has limited shared memory; clamp num_workers to 0
+    num_workers = config['training']['num_workers']
+    try:
+        import google.colab  # noqa
+        num_workers = 0
+        print("Colab detected: using num_workers=0 (shared-memory limitation)")
+    except ImportError:
+        pass
+    
     # We must explicitly drop last to avoid BatchNorm batch=1 errors
     train_loader = DataLoader(
         dataset,
         batch_size=config['training']['batch_size'],
         shuffle=True,
-        num_workers=config['training']['num_workers'],
+        num_workers=num_workers,
         drop_last=True
     )
     

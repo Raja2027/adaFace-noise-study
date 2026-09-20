@@ -99,7 +99,15 @@ def run_preflight():
             if i >= 2: break
         results['Multiprocessing'] = 'PASS'
     except Exception:
-        results['Multiprocessing'] = 'FAIL'
+        # Colab shared-memory can block num_workers>0; verify num_workers=0 works
+        try:
+            loader = DataLoader(dataset, batch_size=4, num_workers=0)
+            for i, batch in enumerate(loader):
+                if i >= 2: break
+            print("Note: num_workers=2 failed (Colab shm limit); num_workers=0 works fine.")
+            results['Multiprocessing'] = 'PASS'
+        except Exception:
+            results['Multiprocessing'] = 'FAIL'
 
     # 7. AdaFace Parameters
     try:
