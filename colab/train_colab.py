@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
-sys.path.append(str(PROJECT_ROOT.parent / 'AdaFace'))
+sys.path.append(str(PROJECT_ROOT / 'third_party' / 'AdaFace'))
 
 from net import build_model
 from losses.adaface import AdaFace

@@ -1,0 +1,3 @@
+[submodule "third_party/AdaFace"]
+	path = third_party/AdaFace
+	url = https://github.com/mk-minchul/AdaFace.git

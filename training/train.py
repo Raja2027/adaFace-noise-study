@@ -10,7 +10,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ADAFACE_ROOT = PROJECT_ROOT.parent / 'AdaFace'
+ADAFACE_ROOT = PROJECT_ROOT / 'third_party' / 'AdaFace'
 
 # Append to sys.path to import official AdaFace backbone
 sys.path.append(str(ADAFACE_ROOT))
