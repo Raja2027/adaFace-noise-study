@@ -172,6 +172,7 @@ notebook = {
             "outputs": [],
             "source": [
                 "# 9. Copy back to Google Drive\n",
+                "from pathlib import Path\n",
                 "drive_dest = Path(\"/content/drive/MyDrive/adaFace-noise-study/data\")\n",
                 "drive_dest.mkdir(parents=True, exist_ok=True)\n",
                 "\n",
@@ -188,6 +189,9 @@ notebook = {
             "source": [
                 "# 10. Verify Drive Copy\n",
                 "import json\n",
+                "from pathlib import Path\n",
+                "\n",
+                "drive_dest = Path(\"/content/drive/MyDrive/adaFace-noise-study/data\")\n",
                 "\n",
                 "print(\"Verifying Drive copy...\")\n",
                 "train_dir = drive_dest / \"splits\" / \"100k\" / \"images\" / \"train\"\n",
