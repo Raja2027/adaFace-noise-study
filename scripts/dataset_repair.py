@@ -50,13 +50,14 @@ def audit_drive():
     # We also want to find image directories. We don't want to list all 100k images, just the directories.
     for root, dirs, files in os.walk(PROJECT_ROOT):
         # Identify image directories
-        if 'T000000.png' in files or 'T000001.png' in files:
+        png_files = [f for f in files if f.endswith('.png')]
+        if len(png_files) > 0:
             artifacts.append({
                 'path': root,
                 'filename': '[IMAGE DIR]',
                 'type': 'Directory (Images)',
-                'size': sum(os.path.getsize(os.path.join(root, f)) for f in files if f.endswith('.png')),
-                'count': len([f for f in files if f.endswith('.png')])
+                'size': sum(os.path.getsize(os.path.join(root, f)) for f in png_files),
+                'count': len(png_files)
             })
             continue # Don't list individual images
             
@@ -196,10 +197,19 @@ def resolve_master(artifacts, hq_train_dir):
         
     print(f"Master manifest row count: {len(master_df)}")
     
-    # Bijections check against physical directory
     print("Checking BIJECTION against physical images...")
-    if hq_train_dir.exists():
-        physical_images = set([f.split('.')[0] for f in os.listdir(hq_train_dir) if f.endswith('.png')])
+    
+    # Locate scattered HQ train image directory
+    scattered_hq_dir = hq_train_dir
+    for a in artifacts:
+        if a['filename'] == '[IMAGE DIR]' and a['count'] >= 99000:
+            if 'hq' in a['path'].lower() or 'images/train' in a['path'] or 'clean' in a['path']:
+                scattered_hq_dir = Path(a['path'])
+                print(f"Found scattered HQ train directory for bijection at: {scattered_hq_dir}")
+                break
+                
+    if scattered_hq_dir.exists():
+        physical_images = set([f.split('.')[0] for f in os.listdir(scattered_hq_dir) if f.endswith('.png')])
     else:
         physical_images = set()
         
