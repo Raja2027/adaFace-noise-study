@@ -119,9 +119,16 @@ def reconstruct_metadata(artifacts):
     recovered_noise_map = None
     for a in artifacts:
         if a['filename'] == 'noise_map_20pct.csv' or (a['filename'] == 'noise_map.csv' and '20pct' in a['path']):
-            print(f"Recovering existing noise map from: {a['path']}")
-            recovered_noise_map = pd.read_csv(a['path'])
-            break
+            try:
+                candidate = pd.read_csv(a['path'])
+                if 'assigned_identity' in candidate.columns and len(candidate) == NOISE_COUNTS['20pct']:
+                    print(f"Recovering existing valid noise map from: {a['path']}")
+                    recovered_noise_map = candidate
+                    break
+                else:
+                    print(f"Rejecting {a['path']} - invalid schema or row count ({len(candidate)} rows).")
+            except Exception as e:
+                print(f"Failed to read {a['path']}: {e}")
 
     if recovered_noise_map is not None:
         print("Using recovered noise map to reconstruct subset flags.")
