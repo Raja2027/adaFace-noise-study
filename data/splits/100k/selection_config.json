@@ -1,0 +1,16 @@
+{
+    "seed": 42,
+    "target_identities": 2000,
+    "train_images_per_identity": 50,
+    "heldout_images_per_identity": 4,
+    "total_train_images": 100000,
+    "total_heldout_images": 8000,
+    "blur_kernel": [
+        15,
+        15
+    ],
+    "blur_sigma": 5.0,
+    "source_dataset": "C:\\Users\\Dell\\Downloads\\research\\adaFace-noise-study\\data\\raw\\faces_webface_112x112\\train.rec",
+    "creation_timestamp": "2026-09-23T08:48:04.061530",
+    "git_commit": "f108650c9a7fd34754353e06e791bdaf2c655113"
+}

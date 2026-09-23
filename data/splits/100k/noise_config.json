@@ -1,0 +1,10 @@
+{
+    "seed": 42,
+    "noise_counts": {
+        "5pct": 5000,
+        "10pct": 10000,
+        "20pct": 20000
+    },
+    "strategy": "nested closed-set balanced assignment",
+    "nested_guaranteed": true
+}

@@ -24,7 +24,8 @@ checkpoints/
 *.idx
 data/raw/faces_webface_112x112/
 data/splits/pilot_100id/images/
-data/corrupted/*/images/
+data/splits/100k/images/
+data/corrupted/
 *.zip
 *.tar
 *.gz

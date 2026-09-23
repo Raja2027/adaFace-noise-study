@@ -1,0 +1,36 @@
+{
+    "num_identities": 2000,
+    "train_images": 100000,
+    "heldout_images": 8000,
+    "noise_counts": {
+        "0pct": 0,
+        "5pct": 5000,
+        "10pct": 10000,
+        "20pct": 20000
+    },
+    "per_identity_train": {
+        "min": 50,
+        "max": 50,
+        "mean": 50,
+        "median": 50
+    },
+    "per_identity_heldout": {
+        "min": 4,
+        "max": 4,
+        "mean": 4,
+        "median": 4
+    },
+    "20pct_noise_source_distribution": {
+        "min": 3,
+        "max": 20,
+        "mean": 10.0,
+        "median": 10.0
+    },
+    "20pct_noise_target_distribution": {
+        "min": 10,
+        "max": 10,
+        "mean": 10.0,
+        "median": 10.0
+    },
+    "target_balancing_exact": true
+}
