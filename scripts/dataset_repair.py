@@ -83,7 +83,7 @@ def audit_drive():
         
     return artifacts
 
-def reconstruct_metadata():
+def reconstruct_metadata(artifacts):
     """ Deterministically reconstruct master_100k.csv logic without image processing """
     print("Reconstructing dataset metadata using seed=42...")
     import numpy as np
@@ -115,28 +115,44 @@ def reconstruct_metadata():
     train_df = pd.DataFrame(train_records, columns=['source_record_id', 'true_identity'])
     train_df['image_id'] = [f"T{str(i).zfill(6)}" for i in range(len(train_df))]
     
-    # Noise assignment
-    noise_pool = train_df['image_id'].values.copy()
-    rng.shuffle(noise_pool)
-    n20_ids = noise_pool[:NOISE_COUNTS['20pct']]
-    n10_ids = noise_pool[:NOISE_COUNTS['10pct']]
-    n5_ids = noise_pool[:NOISE_COUNTS['5pct']]
-    
-    target_identities_pool = np.repeat(selected_identities, NOISE_COUNTS['20pct'] // TARGET_IDENTITIES)
-    rng.shuffle(target_identities_pool)
-    
-    true_id_map = dict(zip(train_df['image_id'], train_df['true_identity']))
-    assigned_dict_20 = {}
-    
-    for i in range(len(n20_ids)):
-        img_id = n20_ids[i]
-        true_id = true_id_map[img_id]
-        if target_identities_pool[i] == true_id:
-            swap_idx = (i + 1) % len(n20_ids)
-            while target_identities_pool[swap_idx] == true_id or true_id_map[n20_ids[swap_idx]] == target_identities_pool[i]:
-                swap_idx = (swap_idx + 1) % len(n20_ids)
-            target_identities_pool[i], target_identities_pool[swap_idx] = target_identities_pool[swap_idx], target_identities_pool[i]
-        assigned_dict_20[img_id] = target_identities_pool[i]
+    # Check for existing noise maps in artifacts
+    recovered_noise_map = None
+    for a in artifacts:
+        if a['filename'] == 'noise_map_20pct.csv' or (a['filename'] == 'noise_map.csv' and '20pct' in a['path']):
+            print(f"Recovering existing noise map from: {a['path']}")
+            recovered_noise_map = pd.read_csv(a['path'])
+            break
+
+    if recovered_noise_map is not None:
+        print("Using recovered noise map to reconstruct subset flags.")
+        n20_ids = recovered_noise_map['image_id'].tolist()
+        assigned_dict_20 = dict(zip(recovered_noise_map['image_id'], recovered_noise_map['assigned_identity']))
+        # We assume 5pct and 10pct are just the first 5k and 10k of the 20k, just like the deterministic algorithm did.
+        n10_ids = n20_ids[:NOISE_COUNTS['10pct']]
+        n5_ids = n20_ids[:NOISE_COUNTS['5pct']]
+    else:
+        print("No valid noise map recovered. Regenerating deterministic noise assignment...")
+        noise_pool = train_df['image_id'].values.copy()
+        rng.shuffle(noise_pool)
+        n20_ids = noise_pool[:NOISE_COUNTS['20pct']]
+        n10_ids = noise_pool[:NOISE_COUNTS['10pct']]
+        n5_ids = noise_pool[:NOISE_COUNTS['5pct']]
+        
+        target_identities_pool = np.repeat(selected_identities, NOISE_COUNTS['20pct'] // TARGET_IDENTITIES)
+        rng.shuffle(target_identities_pool)
+        
+        true_id_map = dict(zip(train_df['image_id'], train_df['true_identity']))
+        assigned_dict_20 = {}
+        
+        for i in range(len(n20_ids)):
+            img_id = n20_ids[i]
+            true_id = true_id_map[img_id]
+            if target_identities_pool[i] == true_id:
+                swap_idx = (i + 1) % len(n20_ids)
+                while target_identities_pool[swap_idx] == true_id or true_id_map[n20_ids[swap_idx]] == target_identities_pool[i]:
+                    swap_idx = (swap_idx + 1) % len(n20_ids)
+                target_identities_pool[i], target_identities_pool[swap_idx] = target_identities_pool[swap_idx], target_identities_pool[i]
+            assigned_dict_20[img_id] = target_identities_pool[i]
         
     train_df['assigned_identity_0pct'] = train_df['true_identity']
     train_df['is_noisy_0pct'] = 0
@@ -169,7 +185,7 @@ def resolve_master(artifacts, hq_train_dir):
         master_df = pd.read_csv(master_path)
     else:
         print("master_100k.csv is MISSING. Reconstructing via Mode 2...")
-        master_df = reconstruct_metadata()
+        master_df = reconstruct_metadata(artifacts)
         
     print(f"Master manifest row count: {len(master_df)}")
     
