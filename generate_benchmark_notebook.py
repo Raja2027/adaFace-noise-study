@@ -99,7 +99,7 @@ notebook = {
                 "rm -rf repo_temp\n",
                 "git clone https://github.com/Raja2027/adaFace-noise-study.git repo_temp\n",
                 "cd repo_temp\n",
-                "git checkout __NEW_COMMIT_HASH__\n",
+                "git checkout 4c2aa09\n",
                 "git submodule update --init\n",
                 "\n",
                 "# Move everything EXCEPT data to the working dir\n",
