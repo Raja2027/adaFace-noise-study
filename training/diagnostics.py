@@ -43,18 +43,23 @@ class DiagnosticProbeDataset(Dataset):
             'false_id': false_id
         }
 
-def compute_g_head(embeddings, norms, labels, head, criterion):
+def compute_gradients(embeddings, norms, labels, head, criterion):
     """
-    Computes per-sample gradient norm w.r.t head kernel.
+    Computes per-sample gradient norm w.r.t head kernel and embeddings.
     Assumes batch_size = 1.
     """
     head.zero_grad(set_to_none=True)
+    if embeddings.grad is not None:
+        embeddings.grad.zero_()
+        
     out, _ = head(embeddings, norms, labels)
     loss = criterion(out, labels)
     
-    # We want grad w.r.t head.kernel
-    grad = torch.autograd.grad(loss, head.kernel, create_graph=False)[0]
-    return torch.norm(grad, p=2).item(), loss.item()
+    grads = torch.autograd.grad(loss, (head.kernel, embeddings), create_graph=False)
+    g_head = torch.norm(grads[0], p=2).item()
+    g_emb = torch.norm(grads[1], p=2).item()
+    
+    return g_head, g_emb, loss.item()
 
 class DiagnosticRunner:
     def __init__(self, probe_conditions_csv, project_root, device):
@@ -107,7 +112,7 @@ class DiagnosticRunner:
                 
                 # --- ACTUAL ---
                 head.force_q_zero = False
-                g_actual, loss_actual = compute_g_head(emb, norm, label, head, self.criterion)
+                g_actual_head, g_actual_emb, loss_actual = compute_gradients(emb, norm, label, head, self.criterion)
                 q_actual = head.margin_scaler if hasattr(head, 'margin_scaler') else None
                 # re-forward to get properties
                 with torch.no_grad():
@@ -116,9 +121,10 @@ class DiagnosticRunner:
                 
                 # --- NEUTRAL ---
                 head.force_q_zero = True
-                g_neutral, _ = compute_g_head(emb, norm, label, head, self.criterion)
+                g_neutral_head, g_neutral_emb, _ = compute_gradients(emb, norm, label, head, self.criterion)
                 
-                delta_g = g_actual - g_neutral
+                delta_g_head = g_actual_head - g_neutral_head
+                delta_g_emb = g_actual_emb - g_neutral_emb
                 
                 results.append({
                     'image_id': image_id,
@@ -132,9 +138,12 @@ class DiagnosticRunner:
                     'AdaFace_quality_indicator': q_actual.item() if q_actual is not None else 0.0,
                     'P_assigned': p_assigned,
                     'per_sample_loss': loss_actual,
-                    'G_actual': g_actual,
-                    'G_neutral': g_neutral,
-                    'Delta_G': delta_g
+                    'G_actual': g_actual_head,
+                    'G_neutral': g_neutral_head,
+                    'Delta_G': delta_g_head,
+                    'G_embedding_actual': g_actual_emb,
+                    'G_embedding_neutral': g_neutral_emb,
+                    'Delta_G_embedding': delta_g_emb
                 })
                 
         head.update_ema = True
