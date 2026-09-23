@@ -33,7 +33,7 @@ notebook = {
                 "rm -rf adaFace-noise-study\n",
                 "git clone https://github.com/Raja2027/adaFace-noise-study.git\n",
                 "cd adaFace-noise-study\n",
-                "git checkout __REPAIR_COMMIT_HASH__\n",
+                "git checkout 8b6ec2d\n",
                 "git submodule update --init\n",
                 "\n",
                 "echo \"==================================================\"\n",
