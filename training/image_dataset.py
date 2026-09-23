@@ -19,6 +19,18 @@ class ImageManifestDataset(Dataset):
         self.df = pd.concat(dfs, ignore_index=True)
         self.project_root = project_root
         self.is_train = is_train
+        
+        # Build deterministic label map from master_100k.csv to map arbitrary CASIA IDs to 0..1999
+        master_path = os.path.join(project_root, "data", "splits", "100k", "master_100k.csv")
+        if os.path.exists(master_path):
+            master_df = pd.read_csv(master_path)
+            # The 2000 selected identities
+            unique_ids = sorted(master_df['true_identity'].unique())
+            self.label_map = {orig: new for new, orig in enumerate(unique_ids)}
+        else:
+            # Fallback if master doesn't exist (e.g. testing)
+            unique_ids = sorted(self.df['true_identity'].unique())
+            self.label_map = {orig: new for new, orig in enumerate(unique_ids)}
 
     def __len__(self):
         return len(self.df)
@@ -42,8 +54,8 @@ class ImageManifestDataset(Dataset):
         img = (img - 0.5) / 0.5
         img = torch.from_numpy(img.transpose((2, 0, 1)).copy())
             
-        true_label = row['true_identity']
-        assigned_label = row['assigned_identity']
+        true_label = self.label_map.get(row['true_identity'], 0)
+        assigned_label = self.label_map.get(row['assigned_identity'], 0)
         image_id = row['image_id']
         
         return img, true_label, image_id, assigned_label
