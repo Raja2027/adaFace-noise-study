@@ -11,6 +11,17 @@ class DiagnosticProbeDataset(Dataset):
     def __init__(self, probe_conditions_csv, project_root):
         self.df = pd.read_csv(probe_conditions_csv)
         self.project_root = project_root
+        
+        # Build deterministic label map to map arbitrary CASIA IDs to 0..1999
+        master_path = os.path.join(project_root, "data", "splits", "100k", "master_100k.csv")
+        if os.path.exists(master_path):
+            master_df = pd.read_csv(master_path)
+            unique_ids = sorted(master_df['true_identity'].unique())
+            self.label_map = {orig: new for new, orig in enumerate(unique_ids)}
+        else:
+            # Fallback
+            unique_ids = sorted(self.df['true_identity'].unique())
+            self.label_map = {orig: new for new, orig in enumerate(unique_ids)}
 
     def __len__(self):
         return len(self.df)
@@ -32,8 +43,8 @@ class DiagnosticProbeDataset(Dataset):
         hq_img = torch.from_numpy(hq_img.transpose((2, 0, 1)).copy())
         lq_img = torch.from_numpy(lq_img.transpose((2, 0, 1)).copy())
         
-        true_id = row['true_identity']
-        false_id = row['false_identity']
+        true_id = self.label_map.get(row['true_identity'], 0)
+        false_id = self.label_map.get(row['false_identity'], 0)
         
         return {
             'image_id': image_id,
