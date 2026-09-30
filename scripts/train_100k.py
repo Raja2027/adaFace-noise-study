@@ -108,10 +108,12 @@ def main():
     trainer = Trainer(backbone, head, optimizer, device)
     diag_runner = DiagnosticRunner(probe_conditions, PROJECT_ROOT, device)
     
+    current_commit = get_git_commit(PROJECT_ROOT)
+    
     manifest = {
         'experiment_name': experiment_name,
         'seed': seed,
-        'git_commit': get_git_commit(PROJECT_ROOT),
+        'git_commit': current_commit,
         'noise_level': args.noise_level,
         'quality_condition': args.quality,
         'train_count': len(train_dataset),
@@ -131,9 +133,34 @@ def main():
     history = {'epoch': [], 'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': [], 'lr': [], 'time': []}
     
     latest_ckpt = sync_dir / 'checkpoint' / 'latest.pt'
+    
+    # Check Drive for completion or latest checkpoint
+    drive_base = Path('/content/drive/MyDrive/adaFace-noise-study/results/100k')
+    drive_dir = drive_base / experiment_name
+    
+    if drive_dir.exists():
+        if (drive_dir / 'checkpoint' / 'epoch_40.pt').exists():
+            print(f"EXPERIMENT {experiment_name} ALREADY COMPLETED ON DRIVE. SKIPPING.")
+            return
+            
+        drive_latest = drive_dir / 'checkpoint' / 'latest.pt'
+        if drive_latest.exists() and not latest_ckpt.exists():
+            print(f"Restoring latest checkpoint from Drive: {drive_latest}")
+            (sync_dir / 'checkpoint').mkdir(parents=True, exist_ok=True)
+            shutil.copy(drive_latest, latest_ckpt)
+            
     if latest_ckpt.exists():
         print(f"Resuming from {latest_ckpt}")
         ckpt = torch.load(latest_ckpt, map_location=device)
+        
+        saved_commit = ckpt.get('git_commit', '')
+        if saved_commit and saved_commit != current_commit and not args.dry_run:
+            print(f"FATAL: Code version mismatch!")
+            print(f"Saved commit:   {saved_commit}")
+            print(f"Current commit: {current_commit}")
+            print("Aborting resume to prevent code drift.")
+            sys.exit(1)
+            
         backbone.load_state_dict(ckpt['backbone'])
         head.load_state_dict(ckpt['head'])
         optimizer.load_state_dict(ckpt['optimizer'])
@@ -171,6 +198,7 @@ def main():
         
         ckpt_state = {
             'epoch': epoch,
+            'git_commit': current_commit,
             'backbone': backbone.state_dict(),
             'head': head.state_dict(),
             'optimizer': optimizer.state_dict(),
@@ -196,15 +224,14 @@ def main():
                 diag_df.to_csv(sync_dir / 'diagnostics' / f'epoch_{epoch:02d}.csv', index=False)
 
         # Drive Sync
-        drive_base = Path('/content/drive/MyDrive/adaFace-noise-study/results/100k')
         if drive_base.parent.exists(): # Simple check if Drive is mounted
-            drive_dir = drive_base / experiment_name
             drive_dir.mkdir(parents=True, exist_ok=True)
             try:
-                subprocess.run(['rsync', '-av', '--delete', f"{sync_dir}/", f"{drive_dir}/"], check=True, capture_output=True)
+                subprocess.run(['rsync', '-av', f"{sync_dir}/", f"{drive_dir}/"], check=True, capture_output=True)
                 print(f"--> Synced epoch {epoch} to Google Drive")
             except Exception as e:
                 print(f"--> Drive sync failed: {e}")
+                sys.exit(1) # Stop the run if Drive sync fails
 
     if args.dry_run:
         # Test diagnostics runs successfully without crashing in dry_run
@@ -212,7 +239,24 @@ def main():
         diag_df = diag_runner.run(backbone, head, current_epoch)
         print("Dry run complete. Diagnostics ran successfully.")
         
-    print("\n--- TRAINING COMPLETE ---")
+    print(f"\n--- EXPERIMENT {experiment_name} COMPLETE ---")
+    
+    if not args.dry_run:
+        print(f"Epochs completed: {epochs}")
+        print(f"Best validation accuracy: {best_acc:.4f}")
+        print(f"Final validation accuracy: {history['val_acc'][-1]:.4f}")
+        print(f"Final validation loss: {history['val_loss'][-1]:.4f}")
+        print(f"Final training loss: {history['train_loss'][-1]:.4f}")
+        print(f"Final training assigned-label accuracy: {history['train_acc'][-1]:.4f}")
+        print(f"Checkpoint location: {drive_dir / 'checkpoint'}")
+        print(f"Diagnostic output location: {drive_dir / 'diagnostics'}")
+        
+        # Write completion marker
+        with open(sync_dir / 'COMPLETED', 'w') as f:
+            f.write("DONE\n")
+            
+        if drive_base.parent.exists():
+            subprocess.run(['rsync', '-av', f"{sync_dir}/", f"{drive_dir}/"], check=True, capture_output=True)
 
 if __name__ == '__main__':
     main()
