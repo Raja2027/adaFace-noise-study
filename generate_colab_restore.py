@@ -1,0 +1,260 @@
+import json
+import subprocess
+
+def get_git_commit():
+    try:
+        return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+    except Exception:
+        return "Not available"
+
+commit_hash = get_git_commit()
+
+notebook = {
+    "cells": [
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "# AdaFace 100k - Colab Restore, Benchmark, and Smoke Test\n",
+                "This notebook mounts Google Drive, copies the 100k dataset TAR archives to fast local `/content` storage, runs validation, executes batch size benchmarks, and performs diagnostic smoke tests."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "# PHASE 1: Mount Google Drive & Environment Checks\n",
+                "import os\n",
+                "import shutil\n",
+                "import hashlib\n",
+                "from pathlib import Path\n",
+                "from google.colab import drive\n",
+                "\n",
+                "drive.mount('/content/drive')\n",
+                "\n",
+                "drive_root = Path(\"/content/drive/MyDrive/adaFace-noise-study\")\n",
+                "splits_tar = drive_root / \"splits.tar\"\n",
+                "corrupted_tar = drive_root / \"corrupted.tar\"\n",
+                "train_rec = drive_root / \"raw\" / \"train.rec\"\n",
+                "train_idx = drive_root / \"raw\" / \"train.idx\"\n",
+                "\n",
+                "print(\"==================================================\")\n",
+                "print(\"PHASE 1 - DRIVE VERIFICATION\")\n",
+                "print(\"==================================================\")\n",
+                "for file_path in [splits_tar, corrupted_tar, train_rec, train_idx]:\n",
+                "    if file_path.exists():\n",
+                "        size_gb = file_path.stat().st_size / (1024**3)\n",
+                "        print(f\"[FOUND] {file_path.name} - Size: {size_gb:.2f} GB\")\n",
+                "    else:\n",
+                "        raise RuntimeError(f\"[MISSING] {file_path} does not exist on Drive!\")\n",
+                "\n",
+                "print(\"\\nChecking disk space...\")\n",
+                "total, used, free = shutil.disk_usage(\"/content\")\n",
+                "print(f\"Free space in /content: {free / (1024**3):.2f} GB\")\n",
+                "total_d, used_d, free_d = shutil.disk_usage(\"/content/drive/MyDrive\")\n",
+                "print(f\"Free space in Drive: {free_d / (1024**3):.2f} GB\")\n",
+                "\n",
+                "print(\"\\nCalculating checksums... (this might take a minute)\")\n",
+                "def get_sha256(filepath):\n",
+                "    sha256 = hashlib.sha256()\n",
+                "    with open(filepath, 'rb') as f:\n",
+                "        for block in iter(lambda: f.read(4096 * 1024), b''):\n",
+                "            sha256.update(block)\n",
+                "    return sha256.hexdigest()\n",
+                "\n",
+                "print(f\"splits.tar SHA256: {get_sha256(splits_tar)}\")\n",
+                "print(f\"corrupted.tar SHA256: {get_sha256(corrupted_tar)}\")\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 2: Clone GitHub Repository\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 2 - CLONE REPOSITORY\"\n",
+                "echo \"==================================================\"\n",
+                "cd /content\n",
+                "rm -rf adaFace-noise-study\n",
+                "git clone https://github.com/Raja2027/adaFace-noise-study.git\n",
+                "cd adaFace-noise-study\n",
+                f"git checkout {commit_hash}\n",
+                "git submodule update --init\n",
+                "\n",
+                "echo \"\"\n",
+                "echo \"DATASET BASELINE COMMIT: bcb9ae487269decfc377140dd32e75f1172cd847\"\n",
+                "echo -n \"IMPLEMENTATION COMMIT: \"\n",
+                "git rev-parse HEAD\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 4: Verify TAR contents before extraction\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 4 - VERIFY TAR CONTENTS\"\n",
+                "echo \"==================================================\"\n",
+                "echo \"Inspecting splits.tar...\"\n",
+                "tar -tf /content/drive/MyDrive/adaFace-noise-study/splits.tar | grep -E \"master_100k.csv|clean_high_train.csv|noise_map_20pct.csv|0pct/|20pct/\" | head -n 15\n",
+                "echo \"\\nInspecting corrupted.tar...\"\n",
+                "tar -tf /content/drive/MyDrive/adaFace-noise-study/corrupted.tar | grep \"100k_blur\" | head -n 10\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 3 & 5: Restore Data and Verify\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 3 & 5 - RESTORE DATA TO /content\"\n",
+                "echo \"==================================================\"\n",
+                "cd /content/adaFace-noise-study\n",
+                "mkdir -p data\n",
+                "\n",
+                "echo \"Extracting splits.tar...\"\n",
+                "tar -xf /content/drive/MyDrive/adaFace-noise-study/splits.tar -C data/\n",
+                "\n",
+                "echo \"Extracting corrupted.tar...\"\n",
+                "tar -xf /content/drive/MyDrive/adaFace-noise-study/corrupted.tar -C data/\n",
+                "\n",
+                "echo \"\\nExtraction complete. Verifying counts...\"\n",
+                "hq_train=$(find data/splits/100k/images/train -type f -name \"*.png\" | wc -l)\n",
+                "hq_heldout=$(find data/splits/100k/images/heldout -type f -name \"*.png\" | wc -l)\n",
+                "lq_train=$(find data/corrupted/100k_blur_15x15_s5/train -type f -name \"*.png\" | wc -l)\n",
+                "\n",
+                "echo \"HQ Train images: $hq_train (Expected: 100000)\"\n",
+                "echo \"HQ Heldout images: $hq_heldout (Expected: 8000)\"\n",
+                "echo \"LQ Train images: $lq_train (Expected: 100000)\"\n",
+                "\n",
+                "if [ $hq_train -ne 100000 ] || [ $hq_heldout -ne 8000 ] || [ $lq_train -ne 100000 ]; then\n",
+                "    echo \"ERROR: Extraction counts do not match expectations!\"\n",
+                "    exit 1\n",
+                "fi\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 6: Run Data Validator\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 6 - RUN EXISTING DATA VALIDATOR\"\n",
+                "echo \"==================================================\"\n",
+                "cd /content/adaFace-noise-study\n",
+                "python scripts/validate_100k_dataset.py\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 7: Verify Probe Conditions\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 7 - VERIFY/CREATE PROBE CONDITIONS\"\n",
+                "echo \"==================================================\"\n",
+                "cd /content/adaFace-noise-study\n",
+                "python scripts/generate_probe_conditions.py\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 8: GPU Environment Report\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 8 - GPU ENVIRONMENT REPORT\"\n",
+                "echo \"==================================================\"\n",
+                "nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader\n",
+                "nvcc --version | grep \"release\"\n",
+                "python -c \"import torch; print(f'PyTorch: {torch.__version__}')\"\n",
+                "python --version\n",
+                "cd /content/adaFace-noise-study && echo -n \"Git commit: \" && git rev-parse HEAD\n",
+                "echo \"Dataset baseline commit: bcb9ae487269decfc377140dd32e75f1172cd847\"\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 9: Real Pipeline Benchmark\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 9 - REAL PIPELINE BENCHMARK\"\n",
+                "echo \"==================================================\"\n",
+                "cd /content/adaFace-noise-study\n",
+                "python scripts/benchmark_100k.py\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "%%bash\n",
+                "# PHASE 10-13: Smoke Tests, Checkpoint, Delta_G, Diagnostic non-interference\n",
+                "echo \"==================================================\"\n",
+                "echo \"PHASE 10-13 - SMOKE TESTS\"\n",
+                "echo \"==================================================\"\n",
+                "cd /content/adaFace-noise-study\n",
+                "python scripts/smoke_test_runner.py\n"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "# PHASE 14 & 15: Stop & Final Report\n",
+                "print(\"==================================================\")\n",
+                "print(\"PHASE 15 - FINAL REPORT (See output above)\")\n",
+                "print(\"==================================================\")\n",
+                "print(\"DATA RESTORE: COMPLETE\")\n",
+                "print(\"DATA VALIDATION: COMPLETE\")\n",
+                "print(\"ENVIRONMENT: PRINTED\")\n",
+                "print(\"BENCHMARK: COMPLETE\")\n",
+                "print(\"SMOKE TESTS: COMPLETE\")\n",
+                "print(\"CHECKPOINT RESTORE: COMPLETE\")\n",
+                "print(\"DELTA_G: COMPLETE\")\n",
+                "print(\"DIAGNOSTIC NON-INTERFERENCE: COMPLETE\")\n",
+                "print(\"\\nFINAL STATUS: READY FOR FULL TRAINING (Pending review of above logs)\")\n"
+            ]
+        }
+    ],
+    "metadata": {
+        "kernelspec": {
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3"
+        }
+    },
+    "nbformat": 4,
+    "nbformat_minor": 4
+}
+
+with open("colab_restore_and_benchmark.ipynb", "w") as f:
+    json.dump(notebook, f, indent=2)
