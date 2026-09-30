@@ -12,7 +12,7 @@ sys.path.append(str(PROJECT_ROOT))
 sys.path.append(str(PROJECT_ROOT / 'third_party' / 'AdaFace'))
 
 from net import build_model
-from head import AdaFace
+from losses.adaface import AdaFace
 from training.image_dataset import ImageManifestDataset
 from training.diagnostics import DiagnosticRunner, compute_gradients
 
