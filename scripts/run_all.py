@@ -28,7 +28,7 @@ def main():
     for quality, noise in experiments:
         print(f"\n[{quality}-{noise}] Launching experiment...")
         cmd = [
-            sys.executable, str(train_script),
+            sys.executable, '-u', str(train_script),
             '--quality', quality,
             '--noise_level', noise
         ]
