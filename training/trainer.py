@@ -45,9 +45,13 @@ class Trainer:
             
             # Metrics
             total_loss += loss.item() * images.size(0)
-            preds = logits.argmax(dim=1)
-            correct += (preds == assigned_labels).sum().item()
-            total += images.size(0)
+            
+            with torch.no_grad():
+                kernel_norm = torch.nn.functional.normalize(self.head.kernel, dim=0)
+                raw_logits = torch.mm(embeddings, kernel_norm)
+                preds = raw_logits.argmax(dim=1)
+                correct += (preds == assigned_labels).sum().item()
+                total += images.size(0)
             
             if batch_idx % log_interval == 0:
                 pbar.set_postfix({'Loss': loss.item(), 'Acc': correct/total})
@@ -78,7 +82,11 @@ class Trainer:
                 loss = self.criterion(logits, assigned_labels)
                 
                 total_loss += loss.item() * images.size(0)
-                preds = logits.argmax(dim=1)
+                
+                # Raw unpenalized accuracy
+                kernel_norm = torch.nn.functional.normalize(self.head.kernel, dim=0)
+                raw_logits = torch.mm(embeddings, kernel_norm)
+                preds = raw_logits.argmax(dim=1)
                 correct += (preds == assigned_labels).sum().item()
                 total += images.size(0)
                 
