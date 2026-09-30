@@ -57,9 +57,9 @@ def main():
     parser.add_argument('--quality', type=str, choices=['HQ', 'LQ'], required=True)
     parser.add_argument('--noise_level', type=str, choices=['0', '5', '10', '20'], required=True)
     parser.add_argument('--epochs', type=int, default=40)
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=0.01)
-    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--dry_run', action='store_true', help="Run 2 epochs of 10 batches for smoke testing")
     args = parser.parse_args()
 
@@ -191,6 +191,17 @@ def main():
             if epoch % 5 == 0 or epoch == epochs:
                 diag_df = diag_runner.run(backbone, head, epoch)
                 diag_df.to_csv(sync_dir / 'diagnostics' / f'epoch_{epoch:02d}.csv', index=False)
+
+        # Drive Sync
+        drive_base = Path('/content/drive/MyDrive/adaFace-noise-study/results/100k')
+        if drive_base.parent.exists(): # Simple check if Drive is mounted
+            drive_dir = drive_base / experiment_name
+            drive_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                subprocess.run(['rsync', '-av', '--delete', f"{sync_dir}/", f"{drive_dir}/"], check=True, capture_output=True)
+                print(f"--> Synced epoch {epoch} to Google Drive")
+            except Exception as e:
+                print(f"--> Drive sync failed: {e}")
 
     if args.dry_run:
         # Test diagnostics runs successfully without crashing in dry_run

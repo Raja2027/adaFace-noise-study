@@ -301,8 +301,8 @@ def main():
         json.dump(all_results, f, indent=2)
     print(f"\nFull benchmark results saved to: {results_path}")
 
-    # --- Select largest stable batch size ---
-    best_run = successful_results[-1]
+    # --- Select fastest stable batch size ---
+    best_run = max(successful_results, key=lambda r: r['Images/sec'])
 
     selected_path = PROJECT_ROOT / "benchmark_selected.json"
     with open(selected_path, "w") as f:
