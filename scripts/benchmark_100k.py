@@ -260,7 +260,7 @@ def main():
         sys.exit(1)
 
     gpu_name = torch.cuda.get_device_name(device)
-    vram_mb = torch.cuda.get_device_properties(device).total_mem / (1024**2)
+    vram_mb = torch.cuda.get_device_properties(device).total_memory / (1024**2)
     print(f"GPU: {gpu_name}")
     print(f"VRAM: {vram_mb:.0f} MB")
     print(f"Workers: {NUM_WORKERS}")
