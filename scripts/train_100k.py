@@ -146,7 +146,10 @@ def main():
     
     epochs = 2 if args.dry_run else args.epochs
     
+    current_epoch = start_epoch - 1
+    
     for epoch in range(start_epoch, epochs + 1):
+        current_epoch = epoch
         epoch_start = time.time()
         
         train_loss, train_acc = trainer.train_one_epoch(train_loader, epoch)
@@ -206,7 +209,7 @@ def main():
     if args.dry_run:
         # Test diagnostics runs successfully without crashing in dry_run
         diag_runner.loader.dataset.df = diag_runner.loader.dataset.df.head(10)
-        diag_df = diag_runner.run(backbone, head, epoch)
+        diag_df = diag_runner.run(backbone, head, current_epoch)
         print("Dry run complete. Diagnostics ran successfully.")
         
     print("\n--- TRAINING COMPLETE ---")
