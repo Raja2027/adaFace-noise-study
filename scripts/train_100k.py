@@ -224,7 +224,7 @@ def main():
                 diag_df.to_csv(sync_dir / 'diagnostics' / f'epoch_{epoch:02d}.csv', index=False)
 
         # Drive Sync
-        if drive_base.parent.exists(): # Simple check if Drive is mounted
+        if Path('/content/drive/MyDrive').exists(): # Simple check if Drive is mounted
             drive_dir.mkdir(parents=True, exist_ok=True)
             try:
                 subprocess.run(['rsync', '-av', f"{sync_dir}/", f"{drive_dir}/"], check=True, capture_output=True)
