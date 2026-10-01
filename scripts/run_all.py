@@ -30,7 +30,8 @@ def main():
         cmd = [
             sys.executable, '-u', str(train_script),
             '--quality', quality,
-            '--noise_level', noise
+            '--noise_level', noise,
+            '--ignore_commit_mismatch'
         ]
         
         try:

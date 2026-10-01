@@ -61,6 +61,7 @@ def main():
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--dry_run', action='store_true', help="Run 2 epochs of 10 batches for smoke testing")
+    parser.add_argument('--ignore_commit_mismatch', action='store_true', help="Bypass the git commit mismatch safeguard")
     args = parser.parse_args()
 
     seed = 42
@@ -155,11 +156,16 @@ def main():
         
         saved_commit = ckpt.get('git_commit', '')
         if saved_commit and saved_commit != current_commit and not args.dry_run:
-            print(f"FATAL: Code version mismatch!")
-            print(f"Saved commit:   {saved_commit}")
-            print(f"Current commit: {current_commit}")
-            print("Aborting resume to prevent code drift.")
-            sys.exit(1)
+            if getattr(args, 'ignore_commit_mismatch', False):
+                print(f"WARNING: Code version mismatch (Saved: {saved_commit}, Current: {current_commit}).")
+                print("Proceeding anyway because --ignore_commit_mismatch is set.")
+            else:
+                print(f"FATAL: Code version mismatch!")
+                print(f"Saved commit:   {saved_commit}")
+                print(f"Current commit: {current_commit}")
+                print("Aborting resume to prevent code drift.")
+                print("Use --ignore_commit_mismatch to force resume.")
+                sys.exit(1)
             
         backbone.load_state_dict(ckpt['backbone'])
         head.load_state_dict(ckpt['head'])
